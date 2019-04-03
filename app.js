@@ -3,29 +3,43 @@ const fs = require('fs');
 const siteURL = require("./config").siteURL;
 const mediaURL = `${siteURL}/wp-json/wp/v2/media`;
 
-https.get(mediaURL, (res) => {
+function downloadMedia(key) {
 
-    let data = "";
+    https.get(`${mediaURL}?page=${key}`, (res) => {
 
-    res.on("data", (chunk) => {
-        data += chunk;
-    });
+        let data = "";
 
-    res.on("end", () => {
-        let mediaList = JSON.parse(data);
-        let outDir = "./out";
-        if (!fs.existsSync(outDir)) {
-            fs.mkdirSync(outDir);
-        }
-        mediaList.forEach((media) => {
-            let full = media.media_details.sizes.full;
-            let file = fs.createWriteStream(`${outDir}/${full.file}`);
-            https.get(full.source_url, (res) => {
-                res.pipe(file);
-            });
+        res.on("data", (chunk) => {
+            data += chunk;
         });
+
+        res.on("end", () => {
+            let parsedData = JSON.parse(data);
+            if (parsedData.code) {
+                console.log(parsedData);
+            } else {
+                let outDir = "./out";
+                if (!fs.existsSync(outDir)) {
+                    fs.mkdirSync(outDir);
+                }
+                parsedData.forEach((media) => {
+                    let fileName = `${media.slug}${media.source_url.substring(media.source_url.lastIndexOf("."))}`;
+                    console.log(fileName);
+                    let file = fs.createWriteStream(`${outDir}/${fileName}`);
+                    https.get(media.source_url, (res) => {
+                        res.pipe(file);
+                    });
+                });
+                setTimeout(() => {
+                    downloadMedia(key + 1);
+                }, 1000);
+            }
+        });
+
+    }).on("error", (err) => {
+        console.log("Error: " + err.message);
     });
 
-}).on("error", (err) => {
-    console.log("Error: " + err.message);
-});
+}
+
+downloadMedia(1);
