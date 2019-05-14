@@ -1,11 +1,13 @@
+const http = require("http");
 const https = require("https");
 const fs = require('fs');
 const siteURL = require("./config").siteURL;
 const mediaURL = `${siteURL}/wp-json/wp/v2/media`;
+const protocol = siteURL.indexOf("https://") === 0 ? https : http;
 
 function downloadMedia(key) {
 
-    https.get(`${mediaURL}?page=${key}`, (res) => {
+    protocol.get(`${mediaURL}?page=${key}`, (res) => {
 
         let data = "";
 
@@ -26,7 +28,7 @@ function downloadMedia(key) {
                     let fileName = `${media.slug}${media.source_url.substring(media.source_url.lastIndexOf("."))}`;
                     console.log(fileName);
                     let file = fs.createWriteStream(`${outDir}/${fileName}`);
-                    https.get(media.source_url, (res) => {
+                    protocol.get(media.source_url, (res) => {
                         res.pipe(file);
                     });
                 });
